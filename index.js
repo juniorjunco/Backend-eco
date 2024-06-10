@@ -14,10 +14,13 @@ app.use(express.json());
 app.use(cors());
 
 // Ensure upload directory exists
-const uploadDir = './upload/images';
-if (!fs.existsSync(uploadDir)) {
-  fs.mkdirSync(uploadDir, { recursive: true });
+const fs = require('fs');
+const path = './upload/images';
+
+if (!fs.existsSync(path)) {
+    fs.mkdirSync(path, { recursive: true });
 }
+
 
 // Database Connection with MongoDB
 mongoose.connect(process.env.MONGODB_URI, {
