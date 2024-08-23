@@ -12,7 +12,7 @@ app.use(express.json());
 
 const allowedOrigins = [
   'https://frontend-five-fawn-95.vercel.app/',
-  'https://admin-d7azyr6k5-juniors-projects-ce0eae1c.vercel.app'
+  'https://admin-d1mkbqpcw-juniors-projects-ce0eae1c.vercel.app'
 ];
 
 app.use(cors({
