@@ -4,32 +4,37 @@ const jwt = require('jsonwebtoken');
 const multer = require('multer');
 const path = require('path');
 const cors = require('cors');
-const fs = require('fs');
-require('dotenv').config(); // Cargar variables de entorno desde .env
 
 const app = express();
 const port = process.env.PORT || 4000;
 
 app.use(express.json());
-app.use(cors());
 
-// Ensure upload directory exists
-const fs = require('fs');
-const path = './upload/images';
+const allowedOrigins = [
+  'https://frontend-production-a2d3.up.railway.app',
+  'https://admin-d7azyr6k5-juniors-projects-ce0eae1c.vercel.app'
+];
 
-if (!fs.existsSync(path)) {
-    fs.mkdirSync(path, { recursive: true });
-}
-
+app.use(cors({
+  origin: function (origin, callback) {
+    if (!origin) return callback(null, true);
+    if (allowedOrigins.indexOf(origin) === -1) {
+      const msg = 'The CORS policy for this site does not allow access from the specified Origin.';
+      return callback(new Error(msg), false);
+    }
+    return callback(null, true);
+  },
+  optionsSuccessStatus: 200
+}));
 
 // Database Connection with MongoDB
 mongoose.connect(process.env.MONGODB_URI, {
   useNewUrlParser: true,
   useUnifiedTopology: true
 }).then(() => {
-  console.log("Connected to MongoDB");
-}).catch((error) => {
-  console.error("Error connecting to MongoDB:", error);
+  console.log('Connected to MongoDB');
+}).catch(err => {
+  console.error('Error connecting to MongoDB:', err.message);
 });
 
 // API Creation 
@@ -39,21 +44,21 @@ app.get('/', (req, res) => {
 
 // Image Storage Engine
 const storage = multer.diskStorage({
-  destination: uploadDir,
+  destination: './upload/images',
   filename: (req, file, cb) => {
-    return cb(null, `${file.fieldname}_${Date.now()}${path.extname(file.originalname)}`);
+    cb(null, `${file.fieldname}_${Date.now()}${path.extname(file.originalname)}`);
   }
 });
 
 const upload = multer({ storage: storage });
 
 // Creating Upload Endpoint for images
-app.use('/images', express.static(uploadDir));
+app.use('/images', express.static('upload/images'));
 
 app.post('/upload', upload.single('product'), (req, res) => {
   res.json({
     success: 1,
-    image_url: `https://backend-chi-coral-48.vercel.app/images/${req.file.filename}`
+    image_url: `https://backend-production-54e42.up.railway.app/images/${req.file.filename}`
   });
 });
 
@@ -116,146 +121,182 @@ const Users = mongoose.model('Users', {
 
 // Add Product Endpoint
 app.post('/addproduct', async (req, res) => {
-  let products = await Product.find({});
-  let id = products.length > 0 ? products[products.length - 1].id + 1 : 1;
+  try {
+    let products = await Product.find({});
+    let id = products.length > 0 ? products[products.length - 1].id + 1 : 1;
 
-  const product = new Product({
-    id: id,
-    name: req.body.name,
-    image: req.body.image,
-    category: req.body.category,
-    new_price: req.body.new_price,
-    old_price: req.body.old_price,
-  });
+    const product = new Product({
+      id: id,
+      name: req.body.name,
+      image: req.body.image,
+      category: req.body.category,
+      new_price: req.body.new_price,
+      old_price: req.body.old_price,
+    });
 
-  await product.save();
-  res.json({
-    success: true,
-    name: req.body.name,
-  });
+    await product.save();
+    res.json({
+      success: true,
+      name: req.body.name,
+    });
+  } catch (err) {
+    res.status(500).json({ success: false, error: err.message });
+  }
 });
 
 // Remove Product Endpoint
 app.post('/removeproduct', async (req, res) => {
-  await Product.findOneAndDelete({ id: req.body.id });
-  res.json({
-    success: true,
-    name: req.body.name
-  });
+  try {
+    await Product.findOneAndDelete({ id: req.body.id });
+    res.json({
+      success: true,
+      name: req.body.name
+    });
+  } catch (err) {
+    res.status(500).json({ success: false, error: err.message });
+  }
 });
 
 // Get All Products Endpoint
 app.get('/allproducts', async (req, res) => {
-  let products = await Product.find({});
-  res.send(products);
+  try {
+    let products = await Product.find({});
+    res.send(products);
+  } catch (err) {
+    res.status(500).json({ success: false, error: err.message });
+  }
 });
 
 // User Registration Endpoint
 app.post('/signup', async (req, res) => {
-  let check = await Users.findOne({ email: req.body.email });
-  if (check) {
-    return res.status(400).json({ success: false, errors: "existing user found with same email address" });
-  }
-
-  let cart = {};
-  for (let i = 0; i < 300; i++) {
-    cart[i] = 0;
-  }
-
-  const user = new Users({
-    name: req.body.username,
-    email: req.body.email,
-    password: req.body.password,
-    cartData: cart,
-  });
-
-  await user.save();
-
-  const data = {
-    user: {
-      id: user.id
+  try {
+    let check = await Users.findOne({ email: req.body.email });
+    if (check) {
+      return res.status(400).json({ success: false, errors: "existing user found with same email address" });
     }
-  };
 
-  const token = jwt.sign(data, 'secret_ecom');
-  res.json({ success: true, token });
+    let cart = {};
+    for (let i = 0; i < 300; i++) {
+      cart[i] = 0;
+    }
+
+    const user = new Users({
+      name: req.body.username,
+      email: req.body.email,
+      password: req.body.password,
+      cartData: cart,
+    });
+
+    await user.save();
+
+    const data = {
+      user: {
+        id: user.id
+      }
+    };
+
+    const token = jwt.sign(data, process.env.JWT_SECRET);
+    res.json({ success: true, token });
+  } catch (err) {
+    res.status(500).json({ success: false, error: err.message });
+  }
 });
 
 // User Login Endpoint
 app.post('/login', async (req, res) => {
-  let user = await Users.findOne({ email: req.body.email });
-  if (user) {
-    const passCompare = req.body.password === user.password;
-    if (passCompare) {
-      const data = {
-        user: {
-          id: user.id
-        }
-      };
-      const token = jwt.sign(data, 'secret_ecom');
-      res.json({ success: true, token });
+  try {
+    let user = await Users.findOne({ email: req.body.email });
+    if (user) {
+      const passCompare = req.body.password === user.password;
+      if (passCompare) {
+        const data = {
+          user: {
+            id: user.id
+          }
+        };
+        const token = jwt.sign(data, process.env.JWT_SECRET);
+        res.json({ success: true, token });
+      } else {
+        res.status(400).json({ success: false, errors: "Wrong Password" });
+      }
+    } else {
+      res.status(400).json({ success: false, errors: "Wrong Email Id" });
     }
-    else {
-      res.json({ success: false, errors: "Wrong Password" });
-    }
-  }
-  else {
-    res.json({ success: false, errors: "Wrong Email Id" });
+  } catch (err) {
+    res.status(500).json({ success: false, error: err.message });
   }
 });
 
 // New Collections Endpoint
 app.get('/newcollections', async (req, res) => {
-  let products = await Product.find({});
-  let newcollection = products.slice(1).slice(-8);
-  res.send(newcollection);
+  try {
+    let products = await Product.find({});
+    let newcollection = products.slice(1).slice(-8);
+    res.send(newcollection);
+  } catch (err) {
+    res.status(500).json({ success: false, error: err.message });
+  }
 });
 
 // Popular in Women Endpoint
 app.get('/popularinwomen', async (req, res) => {
-  let products = await Product.find({ category: "women" });
-  let popular_in_women = products.slice(0, 4);
-  res.send(popular_in_women);
+  try {
+    let products = await Product.find({ category: "women" });
+    let popular_in_women = products.slice(0, 4);
+    res.send(popular_in_women);
+  } catch (err) {
+    res.status(500).json({ success: false, error: err.message });
+  }
 });
 
 // Middleware to fetch user
 const fetchUser = async (req, res, next) => {
   const token = req.header('auth-token');
   if (!token) {
-    res.status(401).send({ errors: "Please authenticate using valid token" });
+    return res.status(401).send({ errors: "Please authenticate using valid token" });
   }
-  else {
-    try {
-      const data = jwt.verify(token, 'secret_ecom');
-      req.user = data.user;
-      next();
-    } catch (error) {
-      res.status(401).send({ errors: "please authenticate using a valid token" });
-    }
+  try {
+    const data = jwt.verify(token, process.env.JWT_SECRET);
+    req.user = data.user;
+    next();
+  } catch (error) {
+    res.status(401).send({ errors: "Please authenticate using a valid token" });
   }
 };
 
 // Add to Cart Endpoint
 app.post('/addtocart', fetchUser, async (req, res) => {
-  let userData = await Users.findOne({ _id: req.user.id });
-  userData.cartData[req.body.itemId] += 1;
-  await Users.findOneAndUpdate({ _id: req.user.id }, { cartData: userData.cartData });
-  res.send("Added");
+  try {
+    let userData = await Users.findOne({ _id: req.user.id });
+    userData.cartData[req.body.itemId] += 1;
+    await Users.findOneAndUpdate({ _id: req.user.id }, { cartData: userData.cartData });
+    res.send("Added");
+  } catch (err) {
+    res.status(500).json({ success: false, error: err.message });
+  }
 });
 
 // Remove from Cart Endpoint
 app.post('/removefromcart', fetchUser, async (req, res) => {
-  let userData = await Users.findOne({ _id: req.user.id });
-  if (userData.cartData[req.body.itemId] > 0)
-    userData.cartData[req.body.itemId] -= 1;
-  await Users.findOneAndUpdate({ _id: req.user.id }, { cartData: userData.cartData });
-  res.send("Removed");
+  try {
+    let userData = await Users.findOne({ _id: req.user.id });
+    if (userData.cartData[req.body.itemId] > 0)
+      userData.cartData[req.body.itemId] -= 1;
+    await Users.findOneAndUpdate({ _id: req.user.id }, { cartData: userData.cartData });
+    res.send("Removed");
+  } catch (err) {
+    res.status(500).json({ success: false, error: err.message });
+  }
 });
 
 // Get Cart Data Endpoint
 app.post('/getcart', fetchUser, async (req, res) => {
-  let userData = await Users.findOne({ _id: req.user.id });
-  res.json(userData.cartData);
+  try {
+    let userData = await Users.findOne({ _id: req.user.id });
+    res.json(userData.cartData);
+  } catch (err) {
+    res.status(500).json({ success: false, error: err.message });
+  }
 });
 
 app.listen(port, () => {
