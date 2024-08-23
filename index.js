@@ -11,7 +11,7 @@ const port = process.env.PORT || 4000;
 app.use(express.json());
 
 const allowedOrigins = [
-  'https://frontend-production-a2d3.up.railway.app',
+  'https://frontend-five-fawn-95.vercel.app/',
   'https://admin-d7azyr6k5-juniors-projects-ce0eae1c.vercel.app'
 ];
 
