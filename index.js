@@ -11,10 +11,9 @@ const port = process.env.PORT || 4000;
 app.use(express.json());
 
 const allowedOrigins = [
-  'https://frontend-five-fawn-95.vercel.app/',
+  'https://frontend-five-fawn-95.vercel.app',
   'https://admin-d1mkbqpcw-juniors-projects-ce0eae1c.vercel.app'
 ];
-
 app.use(cors({
   origin: function (origin, callback) {
     if (!origin) return callback(null, true);
@@ -24,7 +23,9 @@ app.use(cors({
     }
     return callback(null, true);
   },
-  optionsSuccessStatus: 200
+  methods: 'GET,POST,PUT,DELETE',
+  credentials: true, // Habilitar el envío de cookies, si es necesario
+  optionsSuccessStatus: 200 // Para navegadores antiguos
 }));
 
 // Database Connection with MongoDB
